@@ -26,7 +26,7 @@ namespace WindowsFormsApp1
         public Form1()
         {
             InitializeComponent();
-            udpClient = new UdpClient();
+            udpClient = new UdpClient(65500);
             comboBox1.Items.Add(1);
             comboBox1.Items.Add(2);
             comboBox1.Items.Add(3);
@@ -105,16 +105,17 @@ namespace WindowsFormsApp1
                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
               // return;
             }
-            byte[] testAck = new byte[] { 0x00, 0x0E, 0x00, 0x10 };
-            // COnfirm it is a correct response
-            bool ackReceived = DeviceCommand.Commands["ACK"].SequenceEqual(testAck.Take(2));
-            bool cmdConfirmed = DeviceCommand.Commands["LED ON"].SequenceEqual(testAck.Skip(2).Take(2));
-            if (!ackReceived || !cmdConfirmed)
-            {
-                return;
-            }
+            //byte[] testAck = new byte[] { 0x00, 0x0E, 0x00, 0x10 };
+            //// COnfirm it is a correct response
+            //bool ackReceived = DeviceCommand.Commands["ACK"].SequenceEqual(testAck.Take(2));
+            //bool cmdConfirmed = DeviceCommand.Commands["LED ON"].SequenceEqual(testAck.Skip(2).Take(2));
+            //if (!ackReceived || !cmdConfirmed)
+            //{
+            //    return;
+            //}
 
             // button to press if led is turned on (Success)
+            //var tcs = new TaskCompletionSource<bool>();
             Button validateLedButton = new Button();
             validateLedButton.Text = "Validate";
             validateLedButton.Size = new Size(60, 40);
@@ -143,6 +144,7 @@ namespace WindowsFormsApp1
                 validateLedButton.Visible = false;
                 ledBurnedButton.Visible = false;
             };
+            //await tcs.Task;
             //get mac command
             byte[] getMacBytes = DeviceCommand.Commands["Get_Mac"];
             await udpClient.SendAsync(getMacBytes, getMacBytes.Length, deviceIP, devicePort);
@@ -153,12 +155,13 @@ namespace WindowsFormsApp1
                 string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
                 File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
                 MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                // return;
+                 return;
             }
             else // Got response
             {
                 byte[] geMacHeader = getMacResponse.Take(2).ToArray();
-                bool getSocketsResponseReceived = service.confirmCommand(geMacHeader.Take(2).ToArray(), "Get_Mac_Response");
+                
+                bool getMacResponseReceived = service.confirmCommand(geMacHeader.Take(2).ToArray(), "Get_Mac_Response");
             }
 
             // get sockets command

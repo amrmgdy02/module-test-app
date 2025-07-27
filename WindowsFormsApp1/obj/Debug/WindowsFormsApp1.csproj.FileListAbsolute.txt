@@ -18,3 +18,14 @@ C:\Users\a\OneDrive\Desktop\final repo\module-test-app\WindowsFormsApp1\obj\Debu
 C:\Users\a\OneDrive\Desktop\final repo\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csproj.CoreCompileInputs.cache
 C:\Users\a\OneDrive\Desktop\final repo\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.exe
 C:\Users\a\OneDrive\Desktop\final repo\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.pdb
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.exe.config
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.exe
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.pdb
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csproj.AssemblyReference.cache
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.exe.config
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Form1.resources
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Properties.Resources.resources
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csproj.GenerateResource.cache
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csproj.CoreCompileInputs.cache
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.exe
+C:\Users\mahmo\Source\Repos\module-test-app\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.pdb

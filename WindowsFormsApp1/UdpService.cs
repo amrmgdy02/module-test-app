@@ -37,7 +37,7 @@ public class UdpService
         await client.SendAsync(packet, packet.Length, ipAddress, port);
     }
 
-    public async Task<byte[]> ReceiveAsync(UdpClient client, int timeoutMs = 2000)
+    public async Task<byte[]> ReceiveAsync(UdpClient client, int timeoutMs = 5000)
     {
         try
         {

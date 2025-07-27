@@ -40,3 +40,4 @@
 [7/27/2025 2:52:15 PM] Connection Lost: No response received from 192.168.8.4:65500
 [7/27/2025 3:04:29 PM] Connection Lost: No response received from 192.168.8.4:65500
 [7/27/2025 3:04:48 PM] Connection Lost: No response received from 192.168.8.4:65500
+[7/27/2025 4:21:58 PM] LED Burned: User reported failure from device at 192.168.8.4
