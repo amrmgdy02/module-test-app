@@ -18,8 +18,9 @@ namespace WindowsFormsApp1
     {
 
         UdpClient udpClient;
-        string deviceIP = "127.0.0.1";
-        int devicePort = 12345;
+        string deviceIP = "192.168.8.4";
+        string subnet = "255.255.0.0";
+        int devicePort = 65500;
         string logFilePath = "error_log.txt";
 
         public Form1()
@@ -50,15 +51,25 @@ namespace WindowsFormsApp1
 
             // Get IP and MAC Addresses
             (string ipAddress, string macAddress) = service.GetHostIpAndMac();
-            var hostMacIP_BYTES = service.ConvertIpAndMacToBytes(ipAddress, macAddress); 
+            var hostMacIP_BYTES = service.ConvertIpAndMacToBytes(ipAddress, macAddress);
 
-            //MessageBox.Show($"IP Address: {ipAddress}\nMAC Address: {macAddress}", "Host Info");
+            MessageBox.Show($"IP Address: {ipAddress}\nMAC Address: {macAddress}", "Host Info");
             //MessageBox.Show("IP & MAC (Hex): " + BitConverter.ToString(hostMacIP_BYTES).Replace("-", " "), "Packet Preview");
 
             // 3f Packet command
             byte[] hostmacipCommand = DeviceCommand.Commands["HOSTMACIP"];
             byte[] fullPacket = hostmacipCommand.Concat(hostMacIP_BYTES).ToArray();
-            MessageBox.Show("Full Packet (Hex): " + BitConverter.ToString(fullPacket).Replace("-", " "), "Packet Preview");
+
+            // Convert bytes to hex string
+            string hexString = BitConverter.ToString(fullPacket).Replace("-", "");
+            // Or with spaces: string hexString = BitConverter.ToString(fullPacket).Replace("-", " ");
+
+            // Convert hex string to bytes for transmission
+            byte[] hexBytes = Encoding.UTF8.GetBytes(hexString);
+
+            MessageBox.Show($"Sent bytes: {BitConverter.ToString(hexBytes).Replace("-", " ")}\nSending as hex string: {hexString}", "Packet Preview");
+            MessageBox.Show("Full packet length: " + fullPacket.Length);
+
             await udpClient.SendAsync(fullPacket, fullPacket.Length, deviceIP, devicePort);
 
             // Loading
@@ -84,6 +95,7 @@ namespace WindowsFormsApp1
 
             // Send Led On
             byte[] ledOnBytes = DeviceCommand.Commands["LED ON"];
+            Console.WriteLine(ledOnBytes);
             await udpClient.SendAsync(ledOnBytes, ledOnBytes.Length, deviceIP, devicePort);
             byte[] ledAckResponse = await service.ReceiveAsync(udpClient);
             if (ledAckResponse == null)

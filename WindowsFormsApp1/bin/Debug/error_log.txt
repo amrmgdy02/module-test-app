@@ -31,3 +31,12 @@
 [7/27/2025 8:53:03 AM] Connection Lost: No response received from 127.0.0.1:12345
 [7/27/2025 10:05:13 AM] Connection Lost: No response received from 127.0.0.1:12345
 [7/27/2025 10:05:15 AM] Connection Lost: No response received from 127.0.0.1:12345
+[7/27/2025 2:27:46 PM] Connection Lost: No response received from 127.0.0.1:65500
+[7/27/2025 2:27:47 PM] Connection Lost: No response received from 127.0.0.1:65500
+[7/27/2025 2:27:49 PM] Connection Lost: No response received from 127.0.0.1:65500
+[7/27/2025 2:30:21 PM] Connection Lost: No response received from 127.0.0.1:65500
+[7/27/2025 2:30:38 PM] Connection Lost: No response received from 127.0.0.1:65500
+[7/27/2025 2:30:40 PM] Connection Lost: No response received from 127.0.0.1:65500
+[7/27/2025 2:52:15 PM] Connection Lost: No response received from 192.168.8.4:65500
+[7/27/2025 3:04:29 PM] Connection Lost: No response received from 192.168.8.4:65500
+[7/27/2025 3:04:48 PM] Connection Lost: No response received from 192.168.8.4:65500
