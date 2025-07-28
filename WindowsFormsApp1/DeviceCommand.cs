@@ -16,7 +16,11 @@ public static class DeviceCommand
         { "Learn Cnf", new byte[] {0x00, 0x1C} },
         {"Get_Mac", new byte[] {0x00, 0x19 } },
         {"Get_Mac_Response", new byte[] {0x00, 0x1A } },
-        
+        {"Find_Last_and_Addr", new byte[] {0x00, 0x1A } },
+        {"GET_SOCKETS", new byte[] {0x00, 0x08}},
+        {"SOCKETS_RES",  new byte[] {0x00, 0x09}},
+
+
 
     };
 }

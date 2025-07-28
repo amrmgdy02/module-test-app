@@ -22,11 +22,13 @@ namespace WindowsFormsApp1
         string subnet = "255.255.0.0";
         int devicePort = 65500;
         string logFilePath = "error_log.txt";
-
+        string broadcastAddress = "192.168.255.255";
         public Form1()
         {
             InitializeComponent();
-            udpClient = new UdpClient(65500);
+            udpClient = new UdpClient();
+            udpClient.EnableBroadcast = true;
+            udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, 65500));
             comboBox1.Items.Add(1);
             comboBox1.Items.Add(2);
             comboBox1.Items.Add(3);
@@ -96,26 +98,19 @@ namespace WindowsFormsApp1
             // Send Led On
             byte[] ledOnBytes = DeviceCommand.Commands["LED ON"];
             Console.WriteLine(ledOnBytes);
-            await udpClient.SendAsync(ledOnBytes, ledOnBytes.Length, deviceIP, devicePort);
+            await udpClient.SendAsync(ledOnBytes, ledOnBytes.Length, broadcastAddress, devicePort);
             byte[] ledAckResponse = await service.ReceiveAsync(udpClient);
             if (ledAckResponse == null)
             {
                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
                File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-              // return;
+              return;
             }
-            //byte[] testAck = new byte[] { 0x00, 0x0E, 0x00, 0x10 };
-            //// COnfirm it is a correct response
-            //bool ackReceived = DeviceCommand.Commands["ACK"].SequenceEqual(testAck.Take(2));
-            //bool cmdConfirmed = DeviceCommand.Commands["LED ON"].SequenceEqual(testAck.Skip(2).Take(2));
-            //if (!ackReceived || !cmdConfirmed)
-            //{
-            //    return;
-            //}
 
-            // button to press if led is turned on (Success)
-            //var tcs = new TaskCompletionSource<bool>();
+
+            
+
             Button validateLedButton = new Button();
             validateLedButton.Text = "Validate";
             validateLedButton.Size = new Size(60, 40);
@@ -133,6 +128,18 @@ namespace WindowsFormsApp1
             {
                 validateLedButton.Visible = false;
                 ledBurnedButton.Visible = false;
+                // send led off command
+                byte[] ledOffBytes = DeviceCommand.Commands["LED OFF"];
+                Console.WriteLine(ledOffBytes);
+                await udpClient.SendAsync(ledOffBytes, ledOffBytes.Length, broadcastAddress, devicePort);
+                ledAckResponse = await service.ReceiveAsync(udpClient);
+                if (ledAckResponse == null)
+                {
+                    string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
+                    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                    MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
                 progressBar1.PerformStep();
             };
 
@@ -147,43 +154,59 @@ namespace WindowsFormsApp1
             //await tcs.Task;
             //get mac command
             byte[] getMacBytes = DeviceCommand.Commands["Get_Mac"];
-            await udpClient.SendAsync(getMacBytes, getMacBytes.Length, deviceIP, devicePort);
-            byte[] getMacResponse = await service.ReceiveAsync(udpClient);
-
-            if (getMacResponse == null) // No response sent
+            await udpClient.SendAsync(getMacBytes, getMacBytes.Length, broadcastAddress, devicePort);
+            List<(byte[] Data, string SenderIP)> getMacResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
+            List<(byte[] Data, string SenderIP)> validResponses = new List<(byte[] Data, string SenderIP)>();
+            if (getMacResponses.Count == 0)
             {
-                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
+                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
                 File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
                 MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                 return;
+                return;
             }
-            else // Got response
+            else
             {
-                byte[] geMacHeader = getMacResponse.Take(2).ToArray();
-                
-                bool getMacResponseReceived = service.confirmCommand(geMacHeader.Take(2).ToArray(), "Get_Mac_Response");
+                StringBuilder responseInfo = new StringBuilder();
+                foreach (var (data, senderIP) in getMacResponses)
+                {
+                    if (data.Length < 8) continue;
+
+                    byte[] header = data.Take(2).ToArray();
+                    bool valid = service.confirmCommand(header, "Get_Mac_Response");
+
+                    if (valid)
+                    {
+                        string mac = BitConverter.ToString(data.Skip(2).Take(6).ToArray());
+                        validResponses.Add((data.Skip(2).Take(6).ToArray(), senderIP));
+                        responseInfo.AppendLine($"Device: MAC = {mac}, IP = {senderIP}");
+                    }
+                }
+                MessageBox.Show(responseInfo.ToString(), "Devices Found");
             }
+
+
+
 
             // get sockets command
-            byte[] getSocketsBytes = DeviceCommand.Commands["GET_SOCKETS"];
-            await udpClient.SendAsync(getSocketsBytes, getSocketsBytes.Length, deviceIP, devicePort);
-            // response
-            byte[] getSocketsResponse = await service.ReceiveAsync(udpClient);
+            //byte[] getSocketsBytes = DeviceCommand.Commands["GET_SOCKETS"];
+            //await udpClient.SendAsync(getSocketsBytes, getSocketsBytes.Length, broadcastAddress, devicePort);
+            //// response
+            //byte[] getSocketsResponse = await service.ReceiveAsync(udpClient);
             
-            if (getSocketsResponse == null) // No response sent
-            {
-                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
-                File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                // return;
-            }
-            else // Got response
-            {
-                byte[] socketResHeader = getSocketsResponse.Take(2).ToArray();
-                byte negativeDiodeIndex = getSocketsResponse[2];
-                byte positiveDiodeIndex = getSocketsResponse[3];
-                bool getSocketsResponseReceived = service.confirmCommand(socketResHeader.Take(2).ToArray(), "GET_SOCKETS_RESPONSE");
-            }
+            //if (getSocketsResponse == null) // No response sent
+            //{
+            //    string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
+            //    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+            //    MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //    // return;
+            //}
+            //else // Got response
+            //{
+            //    byte[] socketResHeader = getSocketsResponse.Take(2).ToArray();
+            //    byte negativeDiodeIndex = getSocketsResponse[2];
+            //    byte positiveDiodeIndex = getSocketsResponse[3];
+            //    bool getSocketsResponseReceived = service.confirmCommand(socketResHeader.Take(2).ToArray(), "GET_SOCKETS_RESPONSE");
+            //}
 
         }
 

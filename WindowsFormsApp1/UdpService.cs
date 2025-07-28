@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -36,6 +37,28 @@ public class UdpService
     {
         await client.SendAsync(packet, packet.Length, ipAddress, port);
     }
+
+
+    public async Task<List<(byte[] Data, string SenderIP)>> ReceiveMultipleResponsesAsync(UdpClient client, int timeoutMs = 5000)
+    {
+        List<(byte[] Data, string SenderIP)> responses = new List<(byte[] Data, string SenderIP)>();
+        DateTime endTime = DateTime.Now.AddMilliseconds(timeoutMs);
+
+        while (DateTime.Now < endTime)
+        {
+            if (client.Available > 0)
+            {
+                var result = await client.ReceiveAsync();
+                string senderIP = result.RemoteEndPoint.Address.ToString();
+                responses.Add((result.Buffer, senderIP));
+            }
+
+            await Task.Delay(100); 
+        }
+
+        return responses;
+    }
+
 
     public async Task<byte[]> ReceiveAsync(UdpClient client, int timeoutMs = 5000)
     {
