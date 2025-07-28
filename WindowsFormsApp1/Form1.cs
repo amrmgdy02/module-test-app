@@ -14,6 +14,16 @@ using System.IO;
 
 namespace WindowsFormsApp1
 {
+    internal class NativeMethods
+    {
+        [System.Runtime.InteropServices.DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
+        public static extern IntPtr CreateRoundRectRgn
+        (
+            int nLeftRect, int nTopRect, int nRightRect, int nBottomRect,
+            int nWidthEllipse, int nHeightEllipse
+        );
+    }
+
     public partial class Form1 : Form
     {
 
@@ -48,29 +58,18 @@ namespace WindowsFormsApp1
 
         private async void StartTestingButton_Click(object sender, EventArgs e)
         {
-            //var mockDevice = new MockUdpDevice();
             var service = new UdpService();
 
             // Get IP and MAC Addresses
             (string ipAddress, string macAddress) = service.GetHostIpAndMac();
             var hostMacIP_BYTES = service.ConvertIpAndMacToBytes(ipAddress, macAddress);
 
-            MessageBox.Show($"IP Address: {ipAddress}\nMAC Address: {macAddress}", "Host Info");
+            // MessageBox.Show($"IP Address: {ipAddress}\nMAC Address: {macAddress}", "Host Info");
             //MessageBox.Show("IP & MAC (Hex): " + BitConverter.ToString(hostMacIP_BYTES).Replace("-", " "), "Packet Preview");
 
-            // 3f Packet command
+            // 3F command
             byte[] hostmacipCommand = DeviceCommand.Commands["HOSTMACIP"];
             byte[] fullPacket = hostmacipCommand.Concat(hostMacIP_BYTES).ToArray();
-
-            // Convert bytes to hex string
-            string hexString = BitConverter.ToString(fullPacket).Replace("-", "");
-            // Or with spaces: string hexString = BitConverter.ToString(fullPacket).Replace("-", " ");
-
-            // Convert hex string to bytes for transmission
-            byte[] hexBytes = Encoding.UTF8.GetBytes(hexString);
-
-            MessageBox.Show($"Sent bytes: {BitConverter.ToString(hexBytes).Replace("-", " ")}\nSending as hex string: {hexString}", "Packet Preview");
-            MessageBox.Show("Full packet length: " + fullPacket.Length);
 
             await udpClient.SendAsync(fullPacket, fullPacket.Length, deviceIP, devicePort);
 
@@ -79,18 +78,40 @@ namespace WindowsFormsApp1
             {
                 loadingForm.StartPosition = FormStartPosition.CenterParent;
                 loadingForm.FormBorderStyle = FormBorderStyle.None;
-                loadingForm.Width = 200;
-                loadingForm.Height = 100;
+                loadingForm.BackColor = Color.FromArgb(36, 47, 61);
+                loadingForm.Width = 250;
+                loadingForm.Height = 120;
+                loadingForm.ShowInTaskbar = false;
+                loadingForm.TopMost = true;
+
+                loadingForm.Region = System.Drawing.Region.FromHrgn(
+                    NativeMethods.CreateRoundRectRgn(0, 0, loadingForm.Width, loadingForm.Height, 20, 20));
+
                 var label = new Label
                 {
-                    Text = "LOADING...",
+                    Text = "⏳ Loading...",
                     AutoSize = true,
-                    Font = new Font("Segoe UI", 12),
-                    Location = new Point(50, 40)
+                    Font = new Font("Segoe UI", 14, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(0, 255, 200),
+                    BackColor = Color.Transparent,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Location = new Point((loadingForm.Width - 160) / 2, 30)
                 };
-                loadingForm.Controls.Add(label);
-                loadingForm.Show();
 
+                var progress = new ProgressBar
+                {
+                    Style = ProgressBarStyle.Marquee,
+                    MarqueeAnimationSpeed = 30,
+                    Size = new Size(160, 15),
+                    Location = new Point((loadingForm.Width - 160) / 2, 70),
+                    BackColor = Color.FromArgb(52, 73, 94),
+                    ForeColor = Color.FromArgb(0, 255, 200)
+                };
+
+                loadingForm.Controls.Add(label);
+                loadingForm.Controls.Add(progress);
+
+                loadingForm.Show();
                 await Task.Delay(3000);
                 loadingForm.Close();
             }
@@ -102,33 +123,39 @@ namespace WindowsFormsApp1
             byte[] ledAckResponse = await service.ReceiveAsync(udpClient);
             if (ledAckResponse == null)
             {
-               string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
-               File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-               MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-              return;
+                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
+                File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
 
-
-            
-
+            // button to press if led turned on
             Button validateLedButton = new Button();
             validateLedButton.Text = "Validate";
-            validateLedButton.Size = new Size(60, 40);
+            validateLedButton.Size = new Size(100, 40);
             validateLedButton.Location = new Point(20, 20);
+            validateLedButton.BackColor = Color.FromArgb(46, 204, 113);
+            validateLedButton.ForeColor = Color.White;
+            validateLedButton.FlatStyle = FlatStyle.Flat;
+            validateLedButton.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
             this.Controls.Add(validateLedButton);
 
             // button to press if led isn't turned on (Error)
             Button ledBurnedButton = new Button();
             ledBurnedButton.Text = "Burned Led";
-            ledBurnedButton.Size = new Size(60, 40);
-            ledBurnedButton.Location = new Point(20, 60);
+            ledBurnedButton.Size = new Size(100, 40);
+            ledBurnedButton.Location = new Point(20, 70);
+            ledBurnedButton.BackColor = Color.FromArgb(231, 76, 60);
+            ledBurnedButton.ForeColor = Color.White;
+            ledBurnedButton.FlatStyle = FlatStyle.Flat;
+            ledBurnedButton.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
             this.Controls.Add(ledBurnedButton);
 
             validateLedButton.Click += async (s, err) =>
             {
                 validateLedButton.Visible = false;
                 ledBurnedButton.Visible = false;
-                // send led off command
+                // LED OFF command
                 byte[] ledOffBytes = DeviceCommand.Commands["LED OFF"];
                 Console.WriteLine(ledOffBytes);
                 await udpClient.SendAsync(ledOffBytes, ledOffBytes.Length, broadcastAddress, devicePort);
@@ -143,7 +170,7 @@ namespace WindowsFormsApp1
                 progressBar1.PerformStep();
             };
 
-            ledBurnedButton.Click += async (s, err) => 
+            ledBurnedButton.Click += async (s, err) =>
             {
                 string errorMessage = $"[{DateTime.Now}] LED Burned: User reported failure from device at {deviceIP}";
                 File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
@@ -151,12 +178,14 @@ namespace WindowsFormsApp1
                 validateLedButton.Visible = false;
                 ledBurnedButton.Visible = false;
             };
-            //await tcs.Task;
-            //get mac command
+
+            ////////////////////////////// Get_Mac command ///////////////////////////
             byte[] getMacBytes = DeviceCommand.Commands["Get_Mac"];
             await udpClient.SendAsync(getMacBytes, getMacBytes.Length, broadcastAddress, devicePort);
+
             List<(byte[] Data, string SenderIP)> getMacResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
             List<(byte[] Data, string SenderIP)> validResponses = new List<(byte[] Data, string SenderIP)>();
+
             if (getMacResponses.Count == 0)
             {
                 string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
@@ -169,7 +198,7 @@ namespace WindowsFormsApp1
                 StringBuilder responseInfo = new StringBuilder();
                 foreach (var (data, senderIP) in getMacResponses)
                 {
-                    if (data.Length < 8) continue;
+                    if (data.Length != 8) continue;
 
                     byte[] header = data.Take(2).ToArray();
                     bool valid = service.confirmCommand(header, "Get_Mac_Response");
@@ -184,31 +213,154 @@ namespace WindowsFormsApp1
                 MessageBox.Show(responseInfo.ToString(), "Devices Found");
             }
 
+            ////////////////////////////////// Find_Last_and_Addr //////////////////////////////////
+            byte[] FindLastAndAddrBytes = DeviceCommand.Commands["Find_Last_and_Addr"];
+            await udpClient.SendAsync(FindLastAndAddrBytes, FindLastAndAddrBytes.Length, broadcastAddress, devicePort);
+            List<(byte[] Data, string SenderIP)> receivedAcks = await service.ReceiveMultipleResponsesAsync(udpClient);
+
+            if (receivedAcks.Count == 0)
+            {
+                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
+                File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                //return;
+            }
+            else
+            {
+                int acksCount = 0;
+                StringBuilder responseInfo = new StringBuilder();
+                foreach (var (data, senderIP) in receivedAcks)
+                {
+                    if (data.Length != 4) continue;
+
+                    byte[] header = data.Take(2).ToArray();
+                    bool isAck = service.confirmCommand(header, "ACK");
+                    bool validCommand = service.confirmCommand(data.Skip(2).Take(2).ToArray(), "Find_Last_and_Addr");
+
+                    if (isAck && validCommand)
+                    {
+                        acksCount += 1;
+                    }
+                }
+                // compare acksCount to length of validResponses
+                if (acksCount != validResponses.Count)
+                {
+                    string errorMessage = $"[{DateTime.Now}] Connection Lost: Not all modules respond to find last and addr {broadcastAddress}:{devicePort}";
+                    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                    MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    //return;
+                }
+            }
+
+            /////////////////////////////////// Rlout_Low command ////////////////////////////////////
+            foreach (var (data, moduleIP) in validResponses)
+            {
+                byte[] RloutBytes = DeviceCommand.Commands["Rlout_Low"];
+                await udpClient.SendAsync(RloutBytes, RloutBytes.Length, moduleIP, devicePort);
+                byte[] ackResponse = await service.ReceiveAsync(udpClient);
+
+                if (ackResponse == null)
+                {
+                    string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
+                    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                    MessageBox.Show("Connection Lost: No response received from Rlout low.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    //return;
+                }
+                if (ackResponse.Length != 4)
+                {
+                    string errorMessage = $"[{DateTime.Now}] Unexpected Command: Expected ack {broadcastAddress}:{devicePort}";
+                    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                    MessageBox.Show("Unexpected Command: Expected ack.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    //return;
+                }
+            }
 
 
+            ///////////////////////////////// GET_SOCKETS command /////////////////////////////////
+            byte[] getSocketsBytes = DeviceCommand.Commands["GET_SOCKETS"];
+            await udpClient.SendAsync(getSocketsBytes, getSocketsBytes.Length, broadcastAddress, devicePort);
+            // get sockets response
+            List<(byte[] Data, string SenderIP)> getSocketsResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+            List<(int pinCount, string SenderIP)> validPinCounts = new List<(int pinCount, string SenderIP)>();
 
-            // get sockets command
-            //byte[] getSocketsBytes = DeviceCommand.Commands["GET_SOCKETS"];
-            //await udpClient.SendAsync(getSocketsBytes, getSocketsBytes.Length, broadcastAddress, devicePort);
-            //// response
-            //byte[] getSocketsResponse = await service.ReceiveAsync(udpClient);
-            
-            //if (getSocketsResponse == null) // No response sent
-            //{
-            //    string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
-            //    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-            //    MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //    // return;
-            //}
-            //else // Got response
-            //{
-            //    byte[] socketResHeader = getSocketsResponse.Take(2).ToArray();
-            //    byte negativeDiodeIndex = getSocketsResponse[2];
-            //    byte positiveDiodeIndex = getSocketsResponse[3];
-            //    bool getSocketsResponseReceived = service.confirmCommand(socketResHeader.Take(2).ToArray(), "GET_SOCKETS_RESPONSE");
-            //}
+            if (getSocketsResponse.Count == 0)
+            {
+                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
+                File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                //return;
+            }
+            else
+            {
+                StringBuilder responseInfo = new StringBuilder();
+                foreach (var (data, senderIP) in getSocketsResponse)
+                {
+                    if (data.Length != 4) continue;
 
+                    byte[] header = data.Take(2).ToArray();
+                    bool valid = service.confirmCommand(header, "SOCKETS_RES");
+
+                    if (valid)
+                    { 
+                        int negDiodeCount = data[2]; 
+                        int posDiodeCount = data[3];
+                        if (negDiodeCount ==255)
+                        {
+                            string errorMessage = $"[{DateTime.Now}] Negative diode not found {broadcastAddress}:{devicePort}";
+                            File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                            MessageBox.Show("Negative diode not found", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        if (posDiodeCount == 255)
+                        {
+                            string errorMessage = $"[{DateTime.Now}] Positive diode not found {broadcastAddress}:{devicePort}";
+                            File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                            MessageBox.Show("Positive diode not found", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        int pinCount= posDiodeCount-negDiodeCount-1;
+                        validPinCounts.Add((pinCount, senderIP));
+                        MessageBox.Show("IP: " + senderIP + "\npin count =" + pinCount, "Pin count");
+                    }
+                }
+            }
+
+            ///////////////////////// End_addressing ////////////////////////////
+            byte[] endAddressingBytes = DeviceCommand.Commands["End_addressing"];
+            await udpClient.SendAsync(endAddressingBytes, endAddressingBytes.Length, broadcastAddress, devicePort);
+            List<(byte[] Data, string SenderIP)> endAddressingAcks = await service.ReceiveMultipleResponsesAsync(udpClient);
+
+            if (endAddressingAcks.Count == 0)
+            {
+                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort} after endAddressing";
+                File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                //return;
+            }
+            else
+            {
+                StringBuilder responseInfo = new StringBuilder();
+                int acksCount = 0;
+                foreach (var (data, senderIP) in endAddressingAcks)
+                {
+                    if (data.Length != 4) continue;
+
+                    byte[] header = data.Take(2).ToArray();
+                    bool isAck = service.confirmCommand(header, "ACK");
+                    bool validCommand = service.confirmCommand(data.Skip(2).Take(2).ToArray(), "End_addressing");
+
+                    if (isAck && validCommand)
+                    {
+                        acksCount += 1;
+                    }
+                }
+                // compare acksCount to length of validResponses
+                if (acksCount != validResponses.Count)
+                {
+                    string errorMessage = $"[{DateTime.Now}] Connection Lost: Not all modules respond to end addressing {broadcastAddress}:{devicePort}";
+                    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                    MessageBox.Show("Connection Lost: Not all modules respond to end addressing.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    //return;
+                }
+            }
         }
-
     }
 }

@@ -41,3 +41,11 @@
 [7/27/2025 3:04:29 PM] Connection Lost: No response received from 192.168.8.4:65500
 [7/27/2025 3:04:48 PM] Connection Lost: No response received from 192.168.8.4:65500
 [7/27/2025 4:21:58 PM] LED Burned: User reported failure from device at 192.168.8.4
+[7/28/2025 11:16:05 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/28/2025 11:17:58 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/28/2025 11:18:59 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/28/2025 11:43:18 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/28/2025 11:47:08 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/28/2025 11:48:17 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/28/2025 12:11:27 PM] Unexpected Command: Expected ack 192.168.255.255:65500
+[7/28/2025 12:12:33 PM] Unexpected Command: Expected ack 192.168.255.255:65500

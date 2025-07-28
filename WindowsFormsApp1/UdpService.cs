@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 
 public class UdpService
 {
-    private int localPort = 12346;
-    private int devicePort = 12345;
+    private int localPort = 65500;
+    private int devicePort = 65500;
 
     public async Task<string> SendCommandAsync(string commandName, string deviceIP)
     {
@@ -38,8 +38,7 @@ public class UdpService
         await client.SendAsync(packet, packet.Length, ipAddress, port);
     }
 
-
-    public async Task<List<(byte[] Data, string SenderIP)>> ReceiveMultipleResponsesAsync(UdpClient client, int timeoutMs = 5000)
+    public async Task<List<(byte[] Data, string SenderIP)>> ReceiveMultipleResponsesAsync(UdpClient client, int timeoutMs = 2000)
     {
         List<(byte[] Data, string SenderIP)> responses = new List<(byte[] Data, string SenderIP)>();
         DateTime endTime = DateTime.Now.AddMilliseconds(timeoutMs);
@@ -52,13 +51,10 @@ public class UdpService
                 string senderIP = result.RemoteEndPoint.Address.ToString();
                 responses.Add((result.Buffer, senderIP));
             }
-
             await Task.Delay(100); 
         }
-
         return responses;
     }
-
 
     public async Task<byte[]> ReceiveAsync(UdpClient client, int timeoutMs = 5000)
     {
@@ -84,11 +80,6 @@ public class UdpService
             //LogError($"ReceiveAsync Exception: {ex.Message}\n{ex.StackTrace}");
             return null;
         }
-    }
-
-    private void LogError(string v)
-    {
-        throw new NotImplementedException();
     }
 
     public byte[] ConvertIpAndMacToBytes(string ipAddress, string macAddress)
