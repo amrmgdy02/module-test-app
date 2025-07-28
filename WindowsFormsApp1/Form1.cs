@@ -14,15 +14,6 @@ using System.IO;
 
 namespace WindowsFormsApp1
 {
-    internal class NativeMethods
-    {
-        [System.Runtime.InteropServices.DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
-        public static extern IntPtr CreateRoundRectRgn
-        (
-            int nLeftRect, int nTopRect, int nRightRect, int nBottomRect,
-            int nWidthEllipse, int nHeightEllipse
-        );
-    }
 
     public partial class Form1 : Form
     {
@@ -84,8 +75,7 @@ namespace WindowsFormsApp1
                 loadingForm.ShowInTaskbar = false;
                 loadingForm.TopMost = true;
 
-                loadingForm.Region = System.Drawing.Region.FromHrgn(
-                    NativeMethods.CreateRoundRectRgn(0, 0, loadingForm.Width, loadingForm.Height, 20, 20));
+               
 
                 var label = new Label
                 {
@@ -207,7 +197,7 @@ namespace WindowsFormsApp1
                     {
                         string mac = BitConverter.ToString(data.Skip(2).Take(6).ToArray());
                         validResponses.Add((data.Skip(2).Take(6).ToArray(), senderIP));
-                        responseInfo.AppendLine($"Device: MAC = {mac}, IP = {senderIP}");
+                        responseInfo.AppendLine($"Device: MAC = {mac}\nIP = {senderIP}");
                     }
                 }
                 MessageBox.Show(responseInfo.ToString(), "Devices Found");
@@ -274,7 +264,6 @@ namespace WindowsFormsApp1
                     //return;
                 }
             }
-
 
             ///////////////////////////////// GET_SOCKETS command /////////////////////////////////
             byte[] getSocketsBytes = DeviceCommand.Commands["GET_SOCKETS"];
@@ -361,6 +350,37 @@ namespace WindowsFormsApp1
                     //return;
                 }
             }
+
+            ////////////////////////////// GET ZEROS /////////////////////////////////
+            byte[] getZerosBytes = DeviceCommand.Commands["GET ZEROS"];
+            await udpClient.SendAsync(getZerosBytes, getZerosBytes.Length, broadcastAddress, devicePort);
+            List<(byte[] Data, string SenderIP)> getZerosResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+            List<(string SenderIP, byte[] Data)> ZerosData = new List<(string SenderIP, byte[] Data)>();
+
+            if (getZerosResponse.Count == 0)
+            {
+                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received after get zeros command from {broadcastAddress}:{devicePort}";
+                File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                MessageBox.Show("Connection Lost: No response received after get zeros command from.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            else
+            {
+                foreach (var (data, senderIP) in getZerosResponse)
+                {
+                    byte[] header = data.Take(2).ToArray();
+                    bool valid = service.confirmCommand(header, "GET_ZEROS_RES");
+
+                    if (!valid)
+                    {
+                        continue;
+                    }
+
+                    ZerosData.Add((senderIP, data.Skip(2).ToArray()));
+                   
+                }
+            }
+
         }
     }
 }

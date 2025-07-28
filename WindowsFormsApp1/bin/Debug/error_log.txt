@@ -49,3 +49,4 @@
 [7/28/2025 11:48:17 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
 [7/28/2025 12:11:27 PM] Unexpected Command: Expected ack 192.168.255.255:65500
 [7/28/2025 12:12:33 PM] Unexpected Command: Expected ack 192.168.255.255:65500
+[7/28/2025 1:29:56 PM] Connection Lost: No response received from 192.168.8.4:65500
