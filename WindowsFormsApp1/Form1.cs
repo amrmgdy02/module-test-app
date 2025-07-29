@@ -62,7 +62,7 @@ namespace WindowsFormsApp1
             byte[] hostmacipCommand = DeviceCommand.Commands["HOSTMACIP"];
             byte[] fullPacket = hostmacipCommand.Concat(hostMacIP_BYTES).ToArray();
 
-            await udpClient.SendAsync(fullPacket, fullPacket.Length, deviceIP, devicePort);
+            await udpClient.SendAsync(fullPacket, fullPacket.Length, broadcastAddress, devicePort);
 
             // Loading
             using (var loadingForm = new Form())
@@ -110,12 +110,12 @@ namespace WindowsFormsApp1
             byte[] ledOnBytes = DeviceCommand.Commands["LED ON"];
             Console.WriteLine(ledOnBytes);
             await udpClient.SendAsync(ledOnBytes, ledOnBytes.Length, broadcastAddress, devicePort);
-            byte[] ledAckResponse = await service.ReceiveAsync(udpClient);
-            if (ledAckResponse == null)
+            List<(byte[] Data, string SenderIP)> ledAckResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
+            if (ledAckResponses.Count == 0)
             {
                 string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
                 File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("LED ON: Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -149,12 +149,12 @@ namespace WindowsFormsApp1
                 byte[] ledOffBytes = DeviceCommand.Commands["LED OFF"];
                 Console.WriteLine(ledOffBytes);
                 await udpClient.SendAsync(ledOffBytes, ledOffBytes.Length, broadcastAddress, devicePort);
-                ledAckResponse = await service.ReceiveAsync(udpClient);
-                if (ledAckResponse == null)
+                ledAckResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
+                if (ledAckResponses.Count==0)
                 {
                     string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
                     File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                    MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("LED OFF: Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
                 progressBar1.PerformStep();
@@ -180,7 +180,7 @@ namespace WindowsFormsApp1
             {
                 string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
                 File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Get_Mac: Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             else
@@ -212,7 +212,7 @@ namespace WindowsFormsApp1
             {
                 string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
                 File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Find_Last_and_Addr: Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 //return;
             }
             else
@@ -237,31 +237,50 @@ namespace WindowsFormsApp1
                 {
                     string errorMessage = $"[{DateTime.Now}] Connection Lost: Not all modules respond to find last and addr {broadcastAddress}:{devicePort}";
                     File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                    MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Find_Last_and_Addr: Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     //return;
                 }
             }
 
             /////////////////////////////////// Rlout_Low command ////////////////////////////////////
-            foreach (var (data, moduleIP) in validResponses)
+            int counter = 0;
+            string currentModule = validResponses[0].SenderIP;
+            bool isEnd=false;
+            while (counter < validResponses.Count && !isEnd)
             {
+                if (counter == validResponses.Count-1)
+                {
+                    isEnd = true;
+                }
                 byte[] RloutBytes = DeviceCommand.Commands["Rlout_Low"];
-                await udpClient.SendAsync(RloutBytes, RloutBytes.Length, moduleIP, devicePort);
-                byte[] ackResponse = await service.ReceiveAsync(udpClient);
+                await udpClient.SendAsync(RloutBytes, RloutBytes.Length, currentModule, devicePort);
 
-                if (ackResponse == null)
+                List<(byte[] Data, string SenderIP)> RloutResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+
+                if (RloutResponse.Count==0)
                 {
                     string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
                     File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                    MessageBox.Show("Connection Lost: No response received from Rlout low.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Rlout_Low: Connection Lost: No response received from Rlout low.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     //return;
                 }
-                if (ackResponse.Length != 4)
+                else
                 {
-                    string errorMessage = $"[{DateTime.Now}] Unexpected Command: Expected ack {broadcastAddress}:{devicePort}";
-                    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                    MessageBox.Show("Unexpected Command: Expected ack.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    //return;
+                    foreach ((byte[] data, string ip) in RloutResponse)
+                    {
+                        byte[] header = data.Take(2).ToArray();
+                        if (data.Length == 4)
+                        {
+                            bool isAck = service.confirmCommand(header, "ACK");
+                            bool validCommand = service.confirmCommand(data.Skip(2).Take(2).ToArray(), "Rlout_Low");
+                        }
+                        else if (data.Length == 2 && service.confirmCommand(header, "Find_Last_and_Addr_resp"))
+                        {
+                            currentModule = ip;
+                            counter++;
+                        }
+                    }
+
                 }
             }
 
@@ -270,13 +289,14 @@ namespace WindowsFormsApp1
             await udpClient.SendAsync(getSocketsBytes, getSocketsBytes.Length, broadcastAddress, devicePort);
             // get sockets response
             List<(byte[] Data, string SenderIP)> getSocketsResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
-            List<(int pinCount, string SenderIP)> validPinCounts = new List<(int pinCount, string SenderIP)>();
+            List<(string SenderIP, int pinCount)> validPinCounts = new List<(string SenderIP, int pinCount)>();
+            List<(string SenderIP, int negativeDiode, int positiveDiode)> diodesIdxs = new List<(string SenderIP, int negativeDiode, int positiveDiode)>();
 
             if (getSocketsResponse.Count == 0)
             {
                 string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
                 File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                MessageBox.Show("Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("GET_SOCKETS: Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 //return;
             }
             else
@@ -291,22 +311,23 @@ namespace WindowsFormsApp1
 
                     if (valid)
                     { 
-                        int negDiodeCount = data[2]; 
-                        int posDiodeCount = data[3];
-                        if (negDiodeCount ==255)
+                        int negDiode = data[2]; 
+                        int posDiode = data[3];
+                        if (negDiode == 255)
                         {
                             string errorMessage = $"[{DateTime.Now}] Negative diode not found {broadcastAddress}:{devicePort}";
                             File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
                             MessageBox.Show("Negative diode not found", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
-                        if (posDiodeCount == 255)
+                        if (posDiode == 255)
                         {
                             string errorMessage = $"[{DateTime.Now}] Positive diode not found {broadcastAddress}:{devicePort}";
                             File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
                             MessageBox.Show("Positive diode not found", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
-                        int pinCount= posDiodeCount-negDiodeCount-1;
-                        validPinCounts.Add((pinCount, senderIP));
+                        int pinCount= posDiode - negDiode - 1;
+                        validPinCounts.Add((senderIP, pinCount));
+                        diodesIdxs.Add((senderIP, negDiode, posDiode));
                         MessageBox.Show("IP: " + senderIP + "\npin count =" + pinCount, "Pin count");
                     }
                 }
@@ -378,6 +399,178 @@ namespace WindowsFormsApp1
 
                     ZerosData.Add((senderIP, data.Skip(2).ToArray()));
                    
+                }
+            }
+
+            ////////////////////////////////////// Learn Cnf //////////////////////////////////////
+            int learnCnfCounter = 0;
+            int startIdx = 0;
+            int endIdx = 0;
+            int currPinCount = 0;
+            currentModule = validResponses[0].SenderIP;
+            isEnd = false;
+            int checkAcksount = 0;
+            List<(string SenderIP, int startIdx)> absIdxs = new List<(string SenderIP, int startIdx)>();
+
+            while (learnCnfCounter < validResponses.Count && !isEnd)
+            {
+                if (learnCnfCounter == validResponses.Count - 1)
+                {
+                    isEnd = true;
+                }
+
+                foreach ((string currIp, int pinCount) in validPinCounts)
+                {
+                    if (currIp == currentModule)
+                    {
+                        currPinCount = pinCount;
+                        break;
+                    }
+                }
+                byte[] learnCnfBytes = DeviceCommand.Commands["Learn Cnf"];
+                byte[] temp = new byte[6];
+                temp[0] = (byte)(startIdx >> 8);
+                temp[1] = (byte)(startIdx & 0xFF);
+                temp[2] = 0;
+                temp[3] =(byte) currPinCount;
+                temp[4] = 0;
+                temp[5] = 0;
+                byte[] fullLearnCnfPacket = learnCnfBytes.Concat(temp).ToArray();
+
+                absIdxs.Add((currentModule, startIdx));
+
+                await udpClient.SendAsync(fullLearnCnfPacket, fullLearnCnfPacket.Length, currentModule, devicePort);
+
+                List<(byte[] Data, string SenderIP)> learnCnfResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+                
+                if (learnCnfResponse.Count == 0)
+                {
+                    string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {broadcastAddress}:{devicePort}";
+                    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                    MessageBox.Show("Learn Config: Connection Lost: No response received from Rlout low.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    //return;
+                }
+                else
+                {
+                    foreach ((byte[] data, string ip) in learnCnfResponse)
+                    {
+                        byte[] header = data.Take(2).ToArray();
+                        if (data.Length == 4)
+                        {
+                            bool isAck = service.confirmCommand(header, "ACK");
+                            bool validCommand = service.confirmCommand(data.Skip(2).Take(2).ToArray(), "Learn Cnf");
+                            if (isAck && validCommand)
+                            {
+                                MessageBox.Show("Ack from Learn Connfig with ip="+ip);
+                                learnCnfCounter++;
+                                if(learnCnfCounter < validResponses.Count) 
+                                currentModule = validResponses[learnCnfCounter].SenderIP;
+                                startIdx += currPinCount + 2;
+                            }
+                            
+                        }
+                       
+                    }
+
+                }
+            }
+
+            /////////////////////////////////////// Learn Pin ////////////////////////////////////
+            int learnPinCounter = 0;
+            currentModule = validResponses[0].SenderIP;
+            isEnd = false;
+
+            while (learnPinCounter < validResponses.Count && !isEnd)
+            {
+                if (learnPinCounter == validResponses.Count - 1)
+                {
+                    isEnd = true;
+                }
+
+                // Get pin count for current module
+                currPinCount = 0;
+                foreach ((string currIp, int pinCount) in validPinCounts)
+                {
+                    if (currIp == currentModule)
+                    {
+                        currPinCount = pinCount;
+                        break;
+                    }
+                }
+
+                // Get absolute start index for current module
+                int currAbsIdx = 0;
+                foreach ((string currIp, int idx) in absIdxs)  // Fixed: use absIdxs
+                {
+                    if (currIp == currentModule)
+                    {
+                        currAbsIdx = idx;
+                        break;
+                    }
+                }
+
+                byte[] learnPinBytes = DeviceCommand.Commands["Learn Pin"];
+
+
+                for (int i = currAbsIdx+1 ; i <= currAbsIdx + currPinCount; i++)
+                {
+                    byte[] temp = new byte[2];
+                    temp[0] = (byte)(i >> 8);
+                    temp[1] = (byte)(i & 0xFF);
+
+                    byte[] fullLearnPinPacket = learnPinBytes.Concat(temp).ToArray();
+
+                    await udpClient.SendAsync(fullLearnPinPacket, fullLearnPinPacket.Length, currentModule, devicePort);
+
+                    List<(byte[] Data, string SenderIP)> learnPinResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+
+                    if (learnPinResponse.Count == 0)
+                    {
+                        string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received for pin {i} from {currentModule}:{devicePort}";
+                        File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                        MessageBox.Show($"Learn Pin: No response for pin {i} from {currentModule}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        continue; // Continue with next pin instead of breaking
+                    }
+                    // Process responses for this specific pin
+                    foreach ((byte[] data, string ip) in learnPinResponse)
+                    {
+                        byte[] header = data.Take(2).ToArray();
+                        bool isLearnPin = service.confirmCommand(header, "Learn Pin Res");
+
+                        if (isLearnPin)
+                            {
+                            if (isLearnPin && data.Length > 5)
+                            {
+                                if (data[5] > 0)
+                                {
+                                    byte[] shortsPins = data.Skip(6).ToArray(); // Skip header + pin data
+                                    List<int> shortedPinIndices = new List<int>();
+
+                                    for (int j = 0; j < shortsPins.Length; j += 2)  // Fixed: use j
+                                    {
+                                        if (j + 1 >= shortsPins.Length) break;  // Fixed: use j
+
+                                        int pinIndex = (shortsPins[j] << 8) | shortsPins[j + 1];  // Fixed: use j
+                                        shortedPinIndices.Add(pinIndex);
+                                    }
+
+                                    if (shortedPinIndices.Count > 0)
+                                    {
+                                        string pinList = string.Join(", ", shortedPinIndices);
+                                        string errorMessage = $"[{DateTime.Now}] Learn Pin: Short circuit detected with pins: {pinList}";
+                                        File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                                        MessageBox.Show($"Short circuit detected with pins: {pinList}", "Short Circuit", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    learnPinCounter++;
+                    if (learnPinCounter < validResponses.Count)
+                        currentModule = validResponses[learnPinCounter].SenderIP;
+
+                
                 }
             }
 
