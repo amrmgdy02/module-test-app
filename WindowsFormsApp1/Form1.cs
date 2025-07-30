@@ -511,7 +511,6 @@ namespace WindowsFormsApp1
 
                 byte[] learnPinBytes = DeviceCommand.Commands["Learn Pin"];
 
-
                 for (int i = currAbsIdx+1 ; i <= currAbsIdx + currPinCount; i++)
                 {
                     byte[] temp = new byte[2];
@@ -550,17 +549,19 @@ namespace WindowsFormsApp1
                                     {
                                         if (j + 1 >= shortsPins.Length) break;  
 
-                                        int pinIndex = (shortsPins[j] << 8) | shortsPins[j + 1]; 
+                                        int pinIndex = (shortsPins[j] << 8) | shortsPins[j + 1];
+                                        if(pinIndex ==i)
+                                            continue;
                                         shortedPinIndices.Add(pinIndex);
                                     }
 
-                                    //if (shortedPinIndices.Count > 0)
-                                    //{
-                                    //    string pinList = string.Join(", ", shortedPinIndices);
-                                    //    string errorMessage = $"[{DateTime.Now}] Learn Pin: Pin {i} is shorted with pins: {pinList}";
-                                    //    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                                    //    MessageBox.Show($"Pin {i} is shorted with pins: {pinList}", "Short Circuit", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                    //}
+                                    if (shortedPinIndices.Count > 0)
+                                    {
+                                        string pinList = string.Join(", ", shortedPinIndices);
+                                        string errorMessage = $"[{DateTime.Now}] Learn Pin: Pin {i} is shorted with pins: {pinList}";
+                                        File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                                        MessageBox.Show($"Pin {i} is shorted with pins: {pinList}", "Short Circuit", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    }
 
                                 }
                             }
