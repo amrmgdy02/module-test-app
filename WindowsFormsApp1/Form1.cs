@@ -500,7 +500,7 @@ namespace WindowsFormsApp1
 
                 // Get absolute start index for current module
                 int currAbsIdx = 0;
-                foreach ((string currIp, int idx) in absIdxs)  // Fixed: use absIdxs
+                foreach ((string currIp, int idx) in absIdxs)  
                 {
                     if (currIp == currentModule)
                     {
@@ -520,7 +520,7 @@ namespace WindowsFormsApp1
 
                     byte[] fullLearnPinPacket = learnPinBytes.Concat(temp).ToArray();
 
-                    await udpClient.SendAsync(fullLearnPinPacket, fullLearnPinPacket.Length, currentModule, devicePort);
+                    await udpClient.SendAsync(fullLearnPinPacket, fullLearnPinPacket.Length, broadcastAddress, devicePort);
 
                     List<(byte[] Data, string SenderIP)> learnPinResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
 
@@ -538,40 +538,38 @@ namespace WindowsFormsApp1
                         bool isLearnPin = service.confirmCommand(header, "Learn Pin Res");
 
                         if (isLearnPin)
-                            {
+                        {
                             if (isLearnPin && data.Length > 5)
                             {
-                                if (data[5] > 0)
+                                if (data[4] > 0)
                                 {
-                                    byte[] shortsPins = data.Skip(6).ToArray(); // Skip header + pin data
+                                    byte[] shortsPins = data.Skip(5).ToArray(); 
                                     List<int> shortedPinIndices = new List<int>();
 
-                                    for (int j = 0; j < shortsPins.Length; j += 2)  // Fixed: use j
+                                    for (int j = 0; j < shortsPins.Length; j += 2)  
                                     {
-                                        if (j + 1 >= shortsPins.Length) break;  // Fixed: use j
+                                        if (j + 1 >= shortsPins.Length) break;  
 
-                                        int pinIndex = (shortsPins[j] << 8) | shortsPins[j + 1];  // Fixed: use j
+                                        int pinIndex = (shortsPins[j] << 8) | shortsPins[j + 1]; 
                                         shortedPinIndices.Add(pinIndex);
                                     }
 
-                                    if (shortedPinIndices.Count > 0)
-                                    {
-                                        string pinList = string.Join(", ", shortedPinIndices);
-                                        string errorMessage = $"[{DateTime.Now}] Learn Pin: Short circuit detected with pins: {pinList}";
-                                        File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                                        MessageBox.Show($"Short circuit detected with pins: {pinList}", "Short Circuit", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                                    }
+                                    //if (shortedPinIndices.Count > 0)
+                                    //{
+                                    //    string pinList = string.Join(", ", shortedPinIndices);
+                                    //    string errorMessage = $"[{DateTime.Now}] Learn Pin: Pin {i} is shorted with pins: {pinList}";
+                                    //    File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+                                    //    MessageBox.Show($"Pin {i} is shorted with pins: {pinList}", "Short Circuit", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    //}
+
                                 }
                             }
                         }
                     }
-
-                    learnPinCounter++;
-                    if (learnPinCounter < validResponses.Count)
-                        currentModule = validResponses[learnPinCounter].SenderIP;
-
-                
                 }
+                learnPinCounter++;
+                if (learnPinCounter < validResponses.Count)
+                    currentModule = validResponses[learnPinCounter].SenderIP;
             }
 
         }

@@ -85,3 +85,46 @@
 [7/29/2025 12:46:42 PM] Connection Lost: No response received from 192.168.255.255:65500
 [7/29/2025 2:11:21 PM] Connection Lost: No response received from 192.168.255.255:65500
 [7/29/2025 2:23:53 PM] Connection Lost: No response received for pin 1 from 192.168.8.5:65500
+[7/29/2025 3:24:39 PM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/29/2025 3:25:26 PM] Connection Lost: No response received for pin 1 from 192.168.8.4:65500
+[7/29/2025 3:25:32 PM] Connection Lost: No response received for pin 2 from 192.168.8.4:65500
+[7/29/2025 3:26:11 PM] Connection Lost: No response received for pin 1 from 192.168.8.5:65500
+[7/30/2025 9:36:03 AM] Connection Lost: No response received for pin 1 from 192.168.8.4:65500
+[7/30/2025 9:38:32 AM] Connection Lost: No response received for pin 2 from 192.168.8.4:65500
+[7/30/2025 9:40:38 AM] Connection Lost: No response received for pin 3 from 192.168.8.4:65500
+[7/30/2025 9:41:22 AM] Connection Lost: No response received for pin 4 from 192.168.8.4:65500
+[7/30/2025 11:09:11 AM] Connection Lost: No response received for pin 1 from 192.168.8.4:65500
+[7/30/2025 11:22:45 AM] Learn Pin: Short circuit detected with pins: 256
+[7/30/2025 11:33:14 AM] Learn Pin: Pin 1 is shorted with pins: 1
+[7/30/2025 11:42:03 AM] Learn Pin: Pin 2 is shorted with pins: 2
+[7/30/2025 11:43:48 AM] Connection Lost: Not all modules respond to end addressing 192.168.255.255:65500
+[7/30/2025 11:57:42 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/30/2025 11:58:06 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/30/2025 11:58:34 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/30/2025 11:59:13 AM] Connection Lost: Not all modules respond to find last and addr 192.168.255.255:65500
+[7/30/2025 11:59:52 AM] Learn Pin: Pin 1 is shorted with pins: 1
+[7/30/2025 11:59:56 AM] Learn Pin: Pin 2 is shorted with pins: 2
+[7/30/2025 11:59:58 AM] Learn Pin: Pin 3 is shorted with pins: 3
+[7/30/2025 12:00:00 PM] Learn Pin: Pin 4 is shorted with pins: 4
+[7/30/2025 12:00:01 PM] Learn Pin: Pin 5 is shorted with pins: 5
+[7/30/2025 12:00:02 PM] Learn Pin: Pin 6 is shorted with pins: 6
+[7/30/2025 12:00:09 PM] Learn Pin: Pin 7 is shorted with pins: 7
+[7/30/2025 12:00:11 PM] Learn Pin: Pin 8 is shorted with pins: 8
+[7/30/2025 12:00:15 PM] Learn Pin: Pin 9 is shorted with pins: 9
+[7/30/2025 12:00:18 PM] Learn Pin: Pin 10 is shorted with pins: 10
+[7/30/2025 12:07:04 PM] Learn Pin: Pin 1 is shorted with pins: 1
+[7/30/2025 12:27:30 PM] Negative diode not found 192.168.255.255:65500
+[7/30/2025 12:27:35 PM] Positive diode not found 192.168.255.255:65500
+[7/30/2025 12:28:00 PM] Negative diode not found 192.168.255.255:65500
+[7/30/2025 12:28:02 PM] Positive diode not found 192.168.255.255:65500
+[7/30/2025 12:28:27 PM] Negative diode not found 192.168.255.255:65500
+[7/30/2025 12:28:32 PM] Positive diode not found 192.168.255.255:65500
+[7/30/2025 12:29:42 PM] Negative diode not found 192.168.255.255:65500
+[7/30/2025 12:29:43 PM] Positive diode not found 192.168.255.255:65500
+[7/30/2025 12:42:19 PM] Negative diode not found 192.168.255.255:65500
+[7/30/2025 12:42:21 PM] Positive diode not found 192.168.255.255:65500
+[7/30/2025 12:42:31 PM] Connection Lost: No response received from 192.168.255.255:65500
+[7/30/2025 12:43:03 PM] Negative diode not found 192.168.255.255:65500
+[7/30/2025 12:43:04 PM] Positive diode not found 192.168.255.255:65500
+[7/30/2025 12:44:36 PM] Negative diode not found 192.168.255.255:65500
+[7/30/2025 12:44:37 PM] Positive diode not found 192.168.255.255:65500

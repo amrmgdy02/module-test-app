@@ -38,7 +38,7 @@ public class UdpService
         await client.SendAsync(packet, packet.Length, ipAddress, port);
     }
 
-    public async Task<List<(byte[] Data, string SenderIP)>> ReceiveMultipleResponsesAsync(UdpClient client, int timeoutMs = 2000)
+    public async Task<List<(byte[] Data, string SenderIP)>> ReceiveMultipleResponsesAsync(UdpClient client, int timeoutMs = 500)
     {
         List<(byte[] Data, string SenderIP)> responses = new List<(byte[] Data, string SenderIP)>();
         DateTime endTime = DateTime.Now.AddMilliseconds(timeoutMs);
