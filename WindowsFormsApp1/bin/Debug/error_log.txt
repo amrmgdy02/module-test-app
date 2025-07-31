@@ -19,3 +19,4 @@
 [7/31/2025 8:38:00 AM] Positive diode not found 192.168.255.255:65500
 [7/31/2025 8:38:17 AM] Connection Lost: No response received from 192.168.255.255:65500
 [7/31/2025 2:05:06 PM] Negative diode not found 192.168.255.255:65500
+[7/31/2025 3:10:14 PM] Connection Lost: No response received for LED ON. Port: 65500

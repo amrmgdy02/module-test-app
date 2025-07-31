@@ -48,13 +48,13 @@ namespace WindowsFormsApp1
 
         }
 
-        public async void completeTesting(UdpService service)
+        public async void completeTesting(UdpService service, string myIP)
         {
             ////////////////////////////// Get_Mac command ///////////////////////////
             byte[] getMacBytes = DeviceCommand.Commands["Get_Mac"];
             await udpClient.SendAsync(getMacBytes, getMacBytes.Length, broadcastAddress, devicePort);
 
-            List<(byte[] Data, string SenderIP)> getMacResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
+            List<(byte[] Data, string SenderIP)> getMacResponses = await service.ReceiveMultipleResponsesAsync(udpClient, myIP);
             List<(byte[] Data, string SenderIP)> validResponses = new List<(byte[] Data, string SenderIP)>();
 
             if (getMacResponses.Count == 0)
@@ -87,7 +87,7 @@ namespace WindowsFormsApp1
             ////////////////////////////////// Find_Last_and_Addr //////////////////////////////////
             byte[] FindLastAndAddrBytes = DeviceCommand.Commands["Find_Last_and_Addr"];
             await udpClient.SendAsync(FindLastAndAddrBytes, FindLastAndAddrBytes.Length, broadcastAddress, devicePort);
-            List<(byte[] Data, string SenderIP)> receivedAcks = await service.ReceiveMultipleResponsesAsync(udpClient);
+            List<(byte[] Data, string SenderIP)> receivedAcks = await service.ReceiveMultipleResponsesAsync(udpClient, myIP);
 
             if (receivedAcks.Count == 0)
             {
@@ -136,7 +136,7 @@ namespace WindowsFormsApp1
                 byte[] RloutBytes = DeviceCommand.Commands["Rlout_Low"];
                 await udpClient.SendAsync(RloutBytes, RloutBytes.Length, currentModule, devicePort);
 
-                List<(byte[] Data, string SenderIP)> RloutResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+                List<(byte[] Data, string SenderIP)> RloutResponse = await service.ReceiveMultipleResponsesAsync(udpClient, myIP);
 
                 if (RloutResponse.Count == 0)
                 {
@@ -169,7 +169,7 @@ namespace WindowsFormsApp1
             byte[] getSocketsBytes = DeviceCommand.Commands["GET_SOCKETS"];
             await udpClient.SendAsync(getSocketsBytes, getSocketsBytes.Length, broadcastAddress, devicePort);
             // get sockets response
-            List<(byte[] Data, string SenderIP)> getSocketsResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+            List<(byte[] Data, string SenderIP)> getSocketsResponse = await service.ReceiveMultipleResponsesAsync(udpClient, myIP);
             List<(string SenderIP, int pinCount)> validPinCounts = new List<(string SenderIP, int pinCount)>();
 
             Dictionary<string, int> validPinCountsDict = new Dictionary<string, int>();
@@ -230,7 +230,7 @@ namespace WindowsFormsApp1
             ///////////////////////// End_addressing ////////////////////////////
             byte[] endAddressingBytes = DeviceCommand.Commands["End_addressing"];
             await udpClient.SendAsync(endAddressingBytes, endAddressingBytes.Length, broadcastAddress, devicePort);
-            List<(byte[] Data, string SenderIP)> endAddressingAcks = await service.ReceiveMultipleResponsesAsync(udpClient);
+            List<(byte[] Data, string SenderIP)> endAddressingAcks = await service.ReceiveMultipleResponsesAsync(udpClient, myIP);
 
             if (endAddressingAcks.Count == 0)
             {
@@ -306,7 +306,7 @@ namespace WindowsFormsApp1
 
                 await udpClient.SendAsync(fullLearnCnfPacket, fullLearnCnfPacket.Length, currentModule, devicePort);
 
-                List<(byte[] Data, string SenderIP)> learnCnfResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+                List<(byte[] Data, string SenderIP)> learnCnfResponse = await service.ReceiveMultipleResponsesAsync(udpClient, myIP);
 
                 if (learnCnfResponse.Count == 0)
                 {
@@ -389,7 +389,7 @@ namespace WindowsFormsApp1
 
             //        await udpClient.SendAsync(fullLearnPinPacket, fullLearnPinPacket.Length, broadcastAddress, devicePort);
 
-            //        List<(byte[] Data, string SenderIP)> learnPinResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+            //        List<(byte[] Data, string SenderIP)> learnPinResponse = await service.ReceiveMultipleResponsesAsync(udpClient, myIP);
 
             //        if (learnPinResponse.Count == 0)
             //        {
@@ -474,6 +474,24 @@ namespace WindowsFormsApp1
             pinsList.CheckOnClick = true;
             pinsList.BorderStyle = BorderStyle.None;
             pinsList.ItemHeight = 28;
+            // Add event handler for automatic scrolling
+            pinsList.ItemCheck += (sender, e) =>
+            {
+                if (e.NewValue == CheckState.Checked)
+                {
+                    // Use BeginInvoke to ensure the check state has been updated
+                    this.BeginInvoke(new Action(() =>
+                    {
+                        // Scroll to the checked item
+                        pinsList.TopIndex = e.Index;
+
+                        // Alternative: Center the item in view if you prefer
+                        // int visibleItems = pinsList.ClientSize.Height / pinsList.ItemHeight;
+                        // int targetIndex = Math.Max(0, e.Index - (visibleItems / 2));
+                        // pinsList.TopIndex = Math.Min(targetIndex, pinsList.Items.Count - visibleItems);
+                    }));
+                }
+            };
 
 
             for (int i = 1; i <= totalPinsCount + validResponses.Count*2; i++)
@@ -520,7 +538,7 @@ namespace WindowsFormsApp1
             {
                 byte[] getZerosBytes = DeviceCommand.Commands["GET ZEROS"];
                 await udpClient.SendAsync(getZerosBytes, getZerosBytes.Length, broadcastAddress, devicePort);
-                List<(byte[] Data, string SenderIP)> getZerosResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+                List<(byte[] Data, string SenderIP)> getZerosResponse = await service.ReceiveMultipleResponsesAsync(udpClient, myIP);
 
                 foreach (var (data, senderIP) in getZerosResponse)
                 {
@@ -548,8 +566,7 @@ namespace WindowsFormsApp1
                 }
                 // Check if all pins are probed
                 if (currNumProbed == totalPinsCount) allProbed=true;
-                // Wait
-                await Task.Delay(250);
+                
             }
             foreach (var (d, ip) in validResponses)
             {
@@ -625,7 +642,7 @@ namespace WindowsFormsApp1
             byte[] ledOnBytes = DeviceCommand.Commands["LED ON"];
             Console.WriteLine(ledOnBytes);
             await udpClient.SendAsync(ledOnBytes, ledOnBytes.Length, broadcastAddress, devicePort);
-            List<(byte[] Data, string SenderIP)> ledAckResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
+            List<(byte[] Data, string SenderIP)> ledAckResponses = await service.ReceiveMultipleResponsesAsync(udpClient, ipAddress);
             if (ledAckResponses.Count == 0)
             {
                 string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received for LED ON. Port: {devicePort}";
@@ -664,7 +681,7 @@ namespace WindowsFormsApp1
                 byte[] ledOffBytes = DeviceCommand.Commands["LED OFF"];
                 Console.WriteLine(ledOffBytes);
                 await udpClient.SendAsync(ledOffBytes, ledOffBytes.Length, broadcastAddress, devicePort);
-                ledAckResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
+                ledAckResponses = await service.ReceiveMultipleResponsesAsync(udpClient, ipAddress);
                 if (ledAckResponses.Count==0)
                 {
                     string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received for LED OFF. Port: {devicePort}";
@@ -673,7 +690,7 @@ namespace WindowsFormsApp1
                     return;
                 }
                 progressBar1.PerformStep();
-                completeTesting(service);
+                completeTesting(service, ipAddress);
             };
 
             ledBurnedButton.Click += async (s, err) =>
@@ -683,7 +700,7 @@ namespace WindowsFormsApp1
                 MessageBox.Show("Issue reported: LED is not functioning properly.", "Reported", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 validateLedButton.Visible = false;
                 ledBurnedButton.Visible = false;
-                completeTesting(service);
+                completeTesting(service, ipAddress);
             };
         }
     }

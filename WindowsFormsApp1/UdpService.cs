@@ -38,20 +38,28 @@ public class UdpService
         await client.SendAsync(packet, packet.Length, ipAddress, port);
     }
 
-    public async Task<List<(byte[] Data, string SenderIP)>> ReceiveMultipleResponsesAsync(UdpClient client, int timeoutMs = 500)
+    public async Task<List<(byte[] Data, string SenderIP)>> ReceiveMultipleResponsesAsync(UdpClient client, string myIp, int numOfModules = 2, int timeoutMs = 500)
     {
         List<(byte[] Data, string SenderIP)> responses = new List<(byte[] Data, string SenderIP)>();
         DateTime endTime = DateTime.Now.AddMilliseconds(timeoutMs);
 
-        while (DateTime.Now < endTime)
+        while (DateTime.Now < endTime && responses.Count < numOfModules)
         {
             if (client.Available > 0)
             {
                 var result = await client.ReceiveAsync();
                 string senderIP = result.RemoteEndPoint.Address.ToString();
-                responses.Add((result.Buffer, senderIP));
+
+                // Only add if it's not from the local node
+                if (myIp != senderIP)
+                {
+                    responses.Add((result.Buffer, senderIP));
+                }
             }
-            await Task.Delay(100); 
+            else
+            {
+                await Task.Delay(1);
+            }
         }
         return responses;
     }
