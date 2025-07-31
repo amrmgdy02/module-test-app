@@ -22,6 +22,7 @@ namespace WindowsFormsApp1
         string deviceIP = "192.168.8.4";
         int devicePort = 65500;
         string logFilePath = "error_log.txt";
+        string validModulesFilePath = "valid_modules.txt";
         string broadcastAddress = "192.168.255.255";
         int totalPinsCount = 0;
         public Form1()
@@ -170,6 +171,8 @@ namespace WindowsFormsApp1
             // get sockets response
             List<(byte[] Data, string SenderIP)> getSocketsResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
             List<(string SenderIP, int pinCount)> validPinCounts = new List<(string SenderIP, int pinCount)>();
+
+            Dictionary<string, int> validPinCountsDict = new Dictionary<string, int>();
             List<(string SenderIP, int negativeDiode, int positiveDiode)> diodesIdxs = new List<(string SenderIP, int negativeDiode, int positiveDiode)>();
 
             if (getSocketsResponse.Count == 0)
@@ -181,6 +184,7 @@ namespace WindowsFormsApp1
             }
             else
             {
+                bool validDiodes = true;
                 StringBuilder responseInfo = new StringBuilder();
                 foreach (var (data, senderIP) in getSocketsResponse)
                 {
@@ -195,24 +199,30 @@ namespace WindowsFormsApp1
                         int posDiode = data[3];
                         if (negDiode == 255)
                         {
-                            string errorMessage = $"[{DateTime.Now}] Negative diode not found {broadcastAddress}:{devicePort}";
+                            string errorMessage = $"[{DateTime.Now}] Negative diode not found {senderIP}:{devicePort}";
                             File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
-                            MessageBox.Show("Negative diode not found", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return;
+                            MessageBox.Show($"Negative diode not found for IP: {senderIP}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            validDiodes = false;
                         }
                         if (posDiode == 255)
                         {
                             string errorMessage = $"[{DateTime.Now}] Positive diode not found {broadcastAddress}:{devicePort}";
                             File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
                             MessageBox.Show("Positive diode not found", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return;
+                            validDiodes = false;
                         }
                         int pinCount = posDiode - negDiode - 1;
                         validPinCounts.Add((senderIP, pinCount));
+                        validPinCountsDict[senderIP] = pinCount;
+
                         diodesIdxs.Add((senderIP, negDiode, posDiode));
                         totalPinsCount += pinCount;
-                        MessageBox.Show("IP: " + senderIP + "\npin count =" + pinCount, "Pin count");
+                        //MessageBox.Show("IP: " + senderIP + "\npin count =" + pinCount, "Pin count");
                     }
+                }
+                if (!validDiodes)
+                {
+                    return;
                 }
                 progressBar1.PerformStep();
             }
@@ -265,7 +275,7 @@ namespace WindowsFormsApp1
             currentModule = validResponses[0].SenderIP;
             isEnd = false;
             int checkAcksount = 0;
-            List<(string SenderIP, int startIdx)> absIdxs = new List<(string SenderIP, int startIdx)>();
+            Dictionary<string, int> absIdxs = new Dictionary<string, int>();
 
             while (learnCnfCounter < validResponses.Count && !isEnd)
             {
@@ -292,7 +302,7 @@ namespace WindowsFormsApp1
                 temp[5] = 0;
                 byte[] fullLearnCnfPacket = learnCnfBytes.Concat(temp).ToArray();
 
-                absIdxs.Add((currentModule, startIdx));
+                absIdxs[currentModule] = startIdx;
 
                 await udpClient.SendAsync(fullLearnCnfPacket, fullLearnCnfPacket.Length, currentModule, devicePort);
 
@@ -353,16 +363,18 @@ namespace WindowsFormsApp1
             //            break;
             //        }
             //    }
-
+            //    int currAbsIdx = -1;
             //    // Get absolute start index for current module
-            //    int currAbsIdx = 0;
-            //    foreach ((string currIp, int idx) in absIdxs)
+            //    if (absIdxs.ContainsKey(currentModule))
             //    {
-            //        if (currIp == currentModule)
-            //        {
-            //            currAbsIdx = idx;
-            //            break;
-            //        }
+            //        currAbsIdx = absIdxs[currentModule];
+            //    }
+            //    else
+            //    {
+            //        string errorMessage = $"[{DateTime.Now}] Unexpected Module: new module with unknown indices responded {currentModule}:{devicePort}";
+            //        File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
+            //        MessageBox.Show("Unexpected Module: new module with unknown indices responded.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //        return;
             //    }
 
             //    byte[] learnPinBytes = DeviceCommand.Commands["Learn Pin"];
@@ -377,7 +389,7 @@ namespace WindowsFormsApp1
 
             //        await udpClient.SendAsync(fullLearnPinPacket, fullLearnPinPacket.Length, broadcastAddress, devicePort);
 
-            //        List<(byte[] Data, string SenderIP)> learnPinResponse = await service.ReceiveMultipleResponsesAsync(udpClient, 100);
+            //        List<(byte[] Data, string SenderIP)> learnPinResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
 
             //        if (learnPinResponse.Count == 0)
             //        {
@@ -432,7 +444,7 @@ namespace WindowsFormsApp1
             //progressBar1.PerformStep();
 
             /////////////////////////////// GET ZEROS /////////////////////////////////
-            
+
             bool allProbed = false, endProbing = false;
             int currNumProbed = 0;
 
@@ -463,7 +475,8 @@ namespace WindowsFormsApp1
             pinsList.BorderStyle = BorderStyle.None;
             pinsList.ItemHeight = 28;
 
-            for (int i = 1; i <= totalPinsCount; i++)
+
+            for (int i = 1; i <= totalPinsCount + validResponses.Count*2; i++)
                 pinsList.Items.Add($"● Pin {i}");
 
             Panel accentBar = new Panel();
@@ -517,13 +530,19 @@ namespace WindowsFormsApp1
 
                     byte[] payload = data.Skip(2).ToArray();
                     int numZeros = payload[0];
-                    for (int i = 0; i < numZeros; i++)
+                    for (int i = 0; i < numZeros * 2; i += 2)
                     {
-                        int pinIndex = payload[i + 1];
+                        int pinIndex = (payload[i + 1] << 8) | payload[i + 2];
+                        int absIdx = absIdxs[senderIP];
+
                         if (!probedPins[senderIP].Contains(pinIndex))
                         {
                             currNumProbed++;
                             probedPins[senderIP].Add(pinIndex);
+                            if (pinIndex >= 0 && pinIndex < pinsList.Items.Count)
+                            {
+                                pinsList.SetItemChecked(pinIndex, true);
+                            }
                         }
                     }
                 }
@@ -531,15 +550,15 @@ namespace WindowsFormsApp1
                 if (currNumProbed == totalPinsCount) allProbed=true;
                 // Wait
                 await Task.Delay(250);
-
-                //foreach (var (ip, pinCount) in validPinCounts)
-                //{
-                //    if (!probedPins[ip].SetEquals(Enumerable.Range(0, pinCount)))
-                //    {
-                //        allProbed = false;
-                //        break;
-                //    }
-                //}
+            }
+            foreach (var (d, ip) in validResponses)
+            {
+                if (probedPins[ip].Count == validPinCountsDict[ip])
+                {
+                    string validModuleMessage = $"[{DateTime.Now}] Module {ip} passed the probing successfully.";
+                    File.AppendAllText(validModulesFilePath, validModuleMessage + Environment.NewLine);
+                    MessageBox.Show($"[{DateTime.Now}] Module {ip} passed the probing successfully.");
+                }
             }
         }
 
@@ -554,7 +573,7 @@ namespace WindowsFormsApp1
             // MessageBox.Show($"IP Address: {ipAddress}\nMAC Address: {macAddress}", "Host Info");
             //MessageBox.Show("IP & MAC (Hex): " + BitConverter.ToString(hostMacIP_BYTES).Replace("-", " "), "Packet Preview");
 
-            /////////////////////////////// 3F command ///////////////////////////////
+            //////////////////////////// 3F command
             byte[] hostmacipCommand = DeviceCommand.Commands["HOSTMACIP"];
             byte[] fullPacket = hostmacipCommand.Concat(hostMacIP_BYTES).ToArray();
 
@@ -609,7 +628,7 @@ namespace WindowsFormsApp1
             List<(byte[] Data, string SenderIP)> ledAckResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
             if (ledAckResponses.Count == 0)
             {
-                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
+                string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received for LED ON. Port: {devicePort}";
                 File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
                 MessageBox.Show("LED ON: Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -648,7 +667,7 @@ namespace WindowsFormsApp1
                 ledAckResponses = await service.ReceiveMultipleResponsesAsync(udpClient);
                 if (ledAckResponses.Count==0)
                 {
-                    string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received from {deviceIP}:{devicePort}";
+                    string errorMessage = $"[{DateTime.Now}] Connection Lost: No response received for LED OFF. Port: {devicePort}";
                     File.AppendAllText(logFilePath, errorMessage + Environment.NewLine);
                     MessageBox.Show("LED OFF: Connection Lost: No response received.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
