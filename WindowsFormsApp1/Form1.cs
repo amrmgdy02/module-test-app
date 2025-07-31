@@ -377,7 +377,7 @@ namespace WindowsFormsApp1
 
             //        await udpClient.SendAsync(fullLearnPinPacket, fullLearnPinPacket.Length, broadcastAddress, devicePort);
 
-            //        List<(byte[] Data, string SenderIP)> learnPinResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
+            //        List<(byte[] Data, string SenderIP)> learnPinResponse = await service.ReceiveMultipleResponsesAsync(udpClient, 100);
 
             //        if (learnPinResponse.Count == 0)
             //        {
@@ -432,6 +432,10 @@ namespace WindowsFormsApp1
             //progressBar1.PerformStep();
 
             /////////////////////////////// GET ZEROS /////////////////////////////////
+            
+            bool allProbed = false, endProbing = false;
+            int currNumProbed = 0;
+
             Panel pinsCard = new Panel();
             pinsCard.Location = new Point(250, 20);
             pinsCard.Size = new Size(270, 420);
@@ -475,17 +479,34 @@ namespace WindowsFormsApp1
 
             this.Controls.Add(pinsCard);
 
+            // button to end probing
+            Button endProbingButton = new Button();
+            endProbingButton.Text = "End Probing";
+            endProbingButton.Size = new Size(100, 40);
+            endProbingButton.Location = new Point(20, 20);
+            endProbingButton.BackColor = Color.FromArgb(46, 204, 113);
+            endProbingButton.ForeColor = Color.White;
+            endProbingButton.FlatStyle = FlatStyle.Flat;
+            endProbingButton.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            this.Controls.Add(endProbingButton);
+
+            endProbingButton.Click += async (s, err) =>
+            {
+                endProbingButton.Visible = false;
+                endProbingButton.Visible = false;
+                endProbing = true;
+            };
+
             Dictionary<string, HashSet<int>> probedPins = new Dictionary<string, HashSet<int>>();
             foreach (var (ip, pinCount) in validPinCounts)
             {
                 probedPins[ip] = new HashSet<int>();
             }
-            bool allProbed = false;
 
-            while (!allProbed)
+            while (!allProbed && !endProbing)
             {
                 byte[] getZerosBytes = DeviceCommand.Commands["GET ZEROS"];
-                await udpClient.SendAsync(getZerosBytes, getZerosBytes.Length, validResponses[0].SenderIP, devicePort);
+                await udpClient.SendAsync(getZerosBytes, getZerosBytes.Length, broadcastAddress, devicePort);
                 List<(byte[] Data, string SenderIP)> getZerosResponse = await service.ReceiveMultipleResponsesAsync(udpClient);
 
                 foreach (var (data, senderIP) in getZerosResponse)
@@ -495,27 +516,31 @@ namespace WindowsFormsApp1
                     if (!valid || !probedPins.ContainsKey(senderIP)) continue;
 
                     byte[] payload = data.Skip(2).ToArray();
-
-                    for (int i = 0; i + 1 < payload.Length; i += 2)
+                    int numZeros = payload[0];
+                    for (int i = 0; i < numZeros; i++)
                     {
-                        int pinIndex = (payload[i] << 8) | payload[i + 1];
-                        probedPins[senderIP].Add(pinIndex);
+                        int pinIndex = payload[i + 1];
+                        if (!probedPins[senderIP].Contains(pinIndex))
+                        {
+                            currNumProbed++;
+                            probedPins[senderIP].Add(pinIndex);
+                        }
                     }
                 }
-
                 // Check if all pins are probed
-                allProbed = true;
-                foreach (var (ip, pinCount) in validPinCounts)
-                {
-                    if (!probedPins[ip].SetEquals(Enumerable.Range(0, pinCount)))
-                    {
-                        allProbed = false;
-                        break;
-                    }
-                }
+                if (currNumProbed == totalPinsCount) allProbed=true;
+                // Wait
                 await Task.Delay(250);
-            }
 
+                //foreach (var (ip, pinCount) in validPinCounts)
+                //{
+                //    if (!probedPins[ip].SetEquals(Enumerable.Range(0, pinCount)))
+                //    {
+                //        allProbed = false;
+                //        break;
+                //    }
+                //}
+            }
         }
 
         private async void StartTestingButton_Click(object sender, EventArgs e)
@@ -529,7 +554,7 @@ namespace WindowsFormsApp1
             // MessageBox.Show($"IP Address: {ipAddress}\nMAC Address: {macAddress}", "Host Info");
             //MessageBox.Show("IP & MAC (Hex): " + BitConverter.ToString(hostMacIP_BYTES).Replace("-", " "), "Packet Preview");
 
-            // 3F command
+            /////////////////////////////// 3F command ///////////////////////////////
             byte[] hostmacipCommand = DeviceCommand.Commands["HOSTMACIP"];
             byte[] fullPacket = hostmacipCommand.Concat(hostMacIP_BYTES).ToArray();
 
